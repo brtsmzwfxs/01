@@ -1,8 +1,0 @@
-for i,v in pairs(getgc(true)) do
-   if type(v) == "table" and rawget(v,"IntValue_MaxDamageRange") ~=  then
---add other tables below this--
-       v.IntValue_PelletCount = 30
-       v.IntValue_MaxMagazine = 10000
-       v.IntValue_MaxReserve = 10000
-   end
-end
