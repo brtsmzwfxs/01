@@ -1,0 +1,107 @@
+-- Wait for the player's character to load
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Create a ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.CoreGui -- Use CoreGui for executor compatibility
+screenGui.Name = "SpeedGUI"
+
+-- Create a Frame to hold the elements (30% smaller)
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 210, 0, 70)  -- Reduced size by 30%
+frame.Position = UDim2.new(0.5, -105, 0.5, -35)  -- Centered
+frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+frame.Parent = screenGui
+
+-- Enable Dragging
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function updateDrag(input)
+    local delta = input.Position - dragStart
+    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+-- For Mouse Input
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if not input.UserInputState == Enum.UserInputState.Change then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        updateDrag(input)
+    end
+end)
+
+-- For Touch Input (Mobile)
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if not input.UserInputState == Enum.UserInputState.Change then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.Touch then
+        updateDrag(input)
+    end
+end)
+
+-- Create a Speed TextBox and Toggle with Label
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(0, 210, 0, 14)  -- Adjusted size
+label.Position = UDim2.new(0, 0, 0, 7)  -- Adjusted position
+label.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+label.Text = "Speed"
+label.TextColor3 = Color3.fromRGB(255, 255, 255)
+label.TextScaled = true
+label.Parent = frame
+
+local textBox = Instance.new("TextBox")
+textBox.Size = UDim2.new(0, 84, 0, 28)  -- 30% smaller width and height
+textBox.Position = UDim2.new(0, 16, 0, 23)  -- Adjusted position
+textBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+textBox.Text = "16"  -- Default speed
+textBox.Name = "SpeedTextBox"
+textBox.Parent = frame
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 84, 0, 28)  -- 30% smaller width and height
+toggleButton.Position = UDim2.new(0, 112, 0, 23)  -- Adjusted position
+toggleButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+toggleButton.Text = "Off"
+toggleButton.Name = "SpeedToggle"
+toggleButton.Parent = frame
+
+-- Toggle button logic for WalkSpeed
+local isOn = false
+toggleButton.MouseButton1Click:Connect(function()
+    isOn = not isOn
+    toggleButton.Text = isOn and "On" or "Off"
+end)
+
+-- Continuously update WalkSpeed when toggle is on
+game:GetService("RunService").RenderStepped:Connect(function()
+    if isOn and character:FindFirstChild("Humanoid") then
+        local value = tonumber(textBox.Text)
+        if value then
+            character.Humanoid.WalkSpeed = value
+        end
+    end
+end)
