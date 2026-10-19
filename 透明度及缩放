@@ -3,12 +3,14 @@ local M = {}
 local UIS = game:GetService("UserInputService")
 
 local DEFAULT_ALPHA = 0.60
+local MIN_SCALE = 0.7
 
 local transparencyApplied = false
 local resizeApplied = false
 local windowRef = nil
 local alphaValue = DEFAULT_ALPHA
 local resizeConnections = {}
+local originalSize = nil
 
 local function addConn(c)
     if c then table.insert(resizeConnections, c) end
@@ -73,6 +75,10 @@ function M.applyResize(win)
         return false, "main not ready"
     end
 
+    if not originalSize then
+        originalSize = win.main.AbsoluteSize
+    end
+
     if win.main:FindFirstChild("__ResizeGrip") then
         resizeApplied = true
         return true
@@ -95,7 +101,6 @@ function M.applyResize(win)
     corner.CornerRadius = UDim.new(1, 0)
     corner.Parent = grip
 
-    local minSize = Vector2.new(300, 240)
     local dragging = false
     local dragStart = Vector2.zero
     local startSize = Vector2.zero
@@ -124,14 +129,22 @@ function M.applyResize(win)
             and input.UserInputType ~= Enum.UserInputType.Touch then return end
 
         local delta = UIS:GetMouseLocation() - dragStart
-        local newX = math.max(minSize.X, startSize.X + delta.X)
-        local newY = math.max(minSize.Y, startSize.Y + delta.Y)
+        local newX = startSize.X + delta.X
+        local newY = startSize.Y + delta.Y
 
         if math.abs(delta.X) >= math.abs(delta.Y) then
             newY = newX / aspect
         else
             newX = newY * aspect
         end
+
+        local maxX = originalSize.X
+        local maxY = originalSize.Y
+        local minX = math.floor(originalSize.X * MIN_SCALE)
+        local minY = math.floor(originalSize.Y * MIN_SCALE)
+
+        newX = math.clamp(newX, minX, maxX)
+        newY = math.clamp(newY, minY, maxY)
 
         win.main.Size = UDim2.fromOffset(math.floor(newX), math.floor(newY))
     end))
