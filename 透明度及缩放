@@ -1,67 +1,3 @@
-local M = {}
-
-local UIS = game:GetService("UserInputService")
-
-local DEFAULT_ALPHA = 0.60
-local MIN_SCALE = 0.7
-
-local transparencyApplied = false
-local resizeApplied = false
-local windowRef = nil
-local alphaValue = DEFAULT_ALPHA
-local resizeConnections = {}
-local originalSize = nil
-
-local function addConn(c)
-    if c then table.insert(resizeConnections, c) end
-end
-
-function M.applyTransparency(win, alpha)
-    if not win then return false, "no window" end
-    windowRef = win
-    alphaValue = alpha or alphaValue
-
-    local themePatch = {
-        ElementTransparency       = math.clamp(alphaValue, 0, 1),
-        ElementStrokeTransparency = math.clamp(alphaValue + 0.2, 0, 1),
-        FieldTransparency         = math.clamp(alphaValue + 0.2, 0, 1),
-        ToggleTrackTransparency   = math.clamp(alphaValue + 0.2, 0, 1),
-        SliderBackground          = Color3.fromRGB(45, 45, 65),
-    }
-    pcall(function() win:ChangeTheme(themePatch) end)
-
-    if not win.screenGui then return false, "no screenGui" end
-
-    if win.main then
-        win.main.BackgroundTransparency = alphaValue
-    end
-
-    for _, gui in ipairs(win.screenGui:GetDescendants()) do
-        if gui:IsA("Frame") and gui ~= win.main then
-            if gui:GetAttribute("__baseBG") == nil then
-                gui:SetAttribute("__baseBG", gui.BackgroundTransparency)
-            end
-            local base = gui:GetAttribute("__baseBG") or 0
-            local sz = gui.AbsoluteSize
-            if sz.X > 200 and sz.Y > 100 then
-                gui.BackgroundTransparency = math.clamp(base + (1 - base) * alphaValue, 0, 1)
-            end
-        end
-    end
-
-    task.spawn(function()
-        for _ = 1, 20 do
-            task.wait(0.1)
-            if win.main then
-                win.main.BackgroundTransparency = alphaValue
-            end
-        end
-    end)
-
-    transparencyApplied = true
-    return true
-end
-
 function M.applyResize(win)
     if not win then return false, "no window" end
     windowRef = win
@@ -104,7 +40,6 @@ function M.applyResize(win)
     local dragging = false
     local dragStart = Vector2.zero
     local startSize = Vector2.zero
-    local aspect = 1
 
     addConn(grip.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -112,7 +47,6 @@ function M.applyResize(win)
             dragging = true
             dragStart = UIS:GetMouseLocation()
             startSize = win.main.AbsoluteSize
-            aspect = startSize.X / math.max(startSize.Y, 1)
         end
     end))
 
@@ -129,14 +63,9 @@ function M.applyResize(win)
             and input.UserInputType ~= Enum.UserInputType.Touch then return end
 
         local delta = UIS:GetMouseLocation() - dragStart
+
         local newX = startSize.X + delta.X
         local newY = startSize.Y + delta.Y
-
-        if math.abs(delta.X) >= math.abs(delta.Y) then
-            newY = newX / aspect
-        else
-            newX = newY * aspect
-        end
 
         local maxX = originalSize.X
         local maxY = originalSize.Y
@@ -152,55 +81,3 @@ function M.applyResize(win)
     resizeApplied = true
     return true
 end
-
-function M.apply(win, alpha)
-    if not win then return false, "no window" end
-    local ok1, err1 = M.applyTransparency(win, alpha)
-    local ok2, err2 = M.applyResize(win)
-    return ok1 and ok2, err1 or err2
-end
-
-function M.setAlpha(win, alpha)
-    return M.applyTransparency(win or windowRef, alpha)
-end
-
-function M.removeResize(win)
-    win = win or windowRef
-    if not win or not win.main then return end
-    local grip = win.main:FindFirstChild("__ResizeGrip")
-    if grip then grip:Destroy() end
-    for _, c in ipairs(resizeConnections) do
-        pcall(function() c:Disconnect() end)
-    end
-    resizeConnections = {}
-    resizeApplied = false
-end
-
-function M.resetTransparency(win)
-    win = win or windowRef
-    if not win then return end
-    if win.main then
-        win.main.BackgroundTransparency = 0
-    end
-    if win.screenGui then
-        for _, gui in ipairs(win.screenGui:GetDescendants()) do
-            if gui:IsA("Frame") then
-                local base = gui:GetAttribute("__baseBG")
-                if base ~= nil then
-                    gui.BackgroundTransparency = base
-                end
-            end
-        end
-    end
-    transparencyApplied = false
-end
-
-function M.isTransparencyApplied()
-    return transparencyApplied
-end
-
-function M.isResizeApplied()
-    return resizeApplied
-end
-
-return M
